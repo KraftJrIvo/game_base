@@ -32,6 +32,11 @@ set(GAME_SOURCE_FILES
   "src/game/game.cpp"
 )
 add_library(GAME_NEW SHARED ${GAME_SOURCE_FILES})
+add_custom_command(TARGET GAME_NEW
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E remove -f ${GAME_BASE_SOURCE_DIR}/build/GAME.dll
+    COMMENT "Removing old dll"
+)
 
 # DEPENDENCIES
 set(RAYLIB_VERSION 5.5.4)

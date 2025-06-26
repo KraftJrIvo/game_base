@@ -8,6 +8,7 @@
 #include <fstream>
 
 #include "game/game.h"
+#include "raylib.h"
 #include "util/zpp_bits.h"
 
 #define NOGDI
@@ -40,6 +41,7 @@ struct GameCasesState {
 struct BaseState {
     Vector2 winSz, baseWinSz;
     std::string dllName;
+    std::function<void(GameState&)> gameInit;
     std::function<void(GameState&)> gameUpdateAndDraw;
     std::filesystem::path gameDllPath;
     std::filesystem::path gameNewDllPath;
@@ -58,6 +60,7 @@ struct BaseState {
     }
 
     void setFunc() {
+        gameInit = dll.get_function<void(GameState&)>("init");
         gameUpdateAndDraw = dll.get_function<void(GameState&)>("updateAndDraw");
     }
 
@@ -99,6 +102,7 @@ struct BaseState {
 void initWindow() {
     SetTraceLogLevel(LOG_ERROR);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(WIN_DEF_SZ.x, WIN_DEF_SZ.y, WIN_NOM.c_str());
     SetWindowIcon(LoadImageFromMemory(".png", res_icon, res_icon_len));
     SetTargetFPS(TARGET_FPS);    
@@ -111,6 +115,7 @@ void processInput(BaseState& bs, GameState& gs)
 
     if (IsKeyPressed(KEY_F) || IsKeyPressed(KEY_F11) || (IsKeyPressed(KEY_ENTER) && (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)))) {
         if (!IsWindowFullscreen()) {
+            bs.baseWinSz = {(float)GetScreenWidth(), (float)GetScreenHeight()};
             auto mid = GetCurrentMonitor();
             auto newWinSz = Vector2{(float)GetMonitorWidth(mid), (float)GetMonitorHeight(mid)};
             float xCoeff = newWinSz.x / bs.winSz.x;       
@@ -128,11 +133,6 @@ void processInput(BaseState& bs, GameState& gs)
             SetWindowSize(int(bs.winSz.x), int(bs.winSz.y));
         }
     }
-
-    if (IsKeyPressed(KEY_S))
-        bs.saveState(gs);
-    if (IsKeyPressed(KEY_L))
-        bs.loadState(gs);
 
     if (IsKeyPressed(KEY_LEFT_BRACKET)) {
         if (bs.gcs.recording)
@@ -189,7 +189,15 @@ void processInput(BaseState& bs, GameState& gs)
             }
         }
         bs.gcs.frame++;
+    } else {
+        if (IsKeyPressed(KEY_S))
+            bs.saveState(gs);
+        if (IsKeyPressed(KEY_L))
+            bs.loadState(gs);
+        if (IsKeyPressed(KEY_R))
+            bs.gameInit(gs);
     }
+
 }
 
 int main() 
@@ -198,6 +206,8 @@ int main()
 
     BaseState bs(DLL_NAME);
     GameState gs;
+
+    bs.gameInit(gs);
 
     while (!WindowShouldClose()) {
         bs.checkLoadDLL();
