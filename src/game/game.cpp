@@ -29,7 +29,7 @@ extern "C" {
     Rectangle getBoardRect(const GameState& gs) {
         float bWidth = TILE_RADIUS * 2 * BOARD_WIDTH;
         float bHeight = ROW_HEIGHT * BOARD_HEIGHT;
-        Vector2 bPos = {(GetScreenWidth() - bWidth) * 0.5f, gs.board.pos};
+        Vector2 bPos = {(GetScreenWidth() - bWidth) * 0.5f, (float)GetScreenHeight() - bHeight + gs.board.pos};
         return {bPos.x, bPos.y, bWidth, bHeight};
     }
 
@@ -91,24 +91,6 @@ extern "C" {
         gs.particles.acquire(Particle{true, thing, pos, vel});
     }
 
-    void flyParticles(GameState& gs) {
-        for (int i = 0; i < gs.particles.count(); ++i) {
-            auto& prt = gs.particles.at(i);
-            if (prt.exists) {
-                prt.pos += prt.vel * GetFrameTime();
-                prt.vel += GRAVITY * Vector2{0.0f, 1.0f} * GetFrameTime();
-                if (prt.pos.y > GetScreenHeight()) {
-                    //if (!prt.bounced) {
-                    //    prt.vel = {prt.vel.x, -0.8f * prt.vel.y};
-                    //    prt.bounced = true;
-                    //} else {
-                        prt.exists = false;
-                    //}
-                }
-            }
-        }
-    }
-
     void removeThing(GameState& gs, const ThingPos& pos) {
         gs.board.things[pos.row][pos.col].ref.exists = false;
         updateNeighs(gs, pos, false);
@@ -124,20 +106,20 @@ extern "C" {
     {
         gs = GameState{0};
         
-        gs.seed = GetRandomValue(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+        gs.seed = rand() % std::numeric_limits<int>::max();
 
-        for (int row = 0; row < 3 * BOARD_HEIGHT / 4; ++row)
+        for (int row = 0; row < BOARD_HEIGHT - 5; ++row)
             for (int col = 0; col < BOARD_WIDTH - (row % 2); ++col)
                  addTile(gs, {row, col}, Tile{{(unsigned char)getRandVal(gs, 0, COLORS.size() - 1)}, {true, {row, col}}, {0,0,0,0,0,0}});
 
         rearm(gs);
 
         float bHeight = ROW_HEIGHT * BOARD_HEIGHT;
-        gs.board.pos = -bHeight * 0.5f;
     }
 
     void shootAndRearm(GameState& gs) {
         gs.bullet.exists = true;
+        gs.bullet.rebouncing = false;
         float dir = gs.gun.dir + PI * 0.5f;
         gs.bullet.thing.clr = gs.gun.armed.clr;
         gs.bullet.vel = BULLET_SPEED * Vector2{cos(dir), -sin(dir)};
@@ -201,7 +183,7 @@ extern "C" {
         if (todrop.size() >= N_TO_DROP) {
             for (auto& td : todrop) {
                 removeThing(gs, td);
-                addParticle(gs, gs.board.things[td.row][td.col].thing, getPixByPos(gs, td), gs.bullet.vel);
+                addParticle(gs, gs.board.things[td.row][td.col].thing, getPixByPos(gs, td), gs.bullet.vel * 0.1f);
             }
             for (auto& td : todrop) {
                 auto& thing = gs.board.things[td.row][td.col];
@@ -214,61 +196,118 @@ extern "C" {
 
     }
 
-    void flyBullet(GameState& gs)
+    float easeOutBounce(float x) 
+    {
+        float n1 = 7.5625f;
+        float d1 = 2.75f;
+
+        if (x < 1 / d1) {
+            return n1 * x * x;
+        } else if (x < 2 / d1) {
+            return n1 * (x - 1.5 / d1) * (x - 1.5 / d1) + 0.75;
+        } else if (x < 2.5 / d1) {
+            return n1 * (x - 2.25 / d1) * (x - 2.25 / d1) + 0.9375;
+        } else {
+            return n1 * (x - 2.625 / d1) * (x - 2.625 / d1) + 0.984375;
+        }
+    }
+
+    void flyBullet(GameState& gs, float delta)
     {
         if (gs.bullet.exists)
-            gs.bullet.pos += gs.bullet.vel * GetFrameTime();
+            gs.bullet.pos += gs.bullet.vel * delta;
         if (gs.bullet.pos.y + TILE_RADIUS < 0)
             gs.bullet.exists = false;
         
         auto brect = getBoardRect(gs);
         auto bulpos = getPosByPix(gs, gs.bullet.pos);
 
-        if (gs.bullet.pos.x - BULLET_RADIUS_H < brect.x || gs.bullet.pos.x + BULLET_RADIUS_H > brect.x + brect.width)
-            gs.bullet.vel.x *= -1.0f;
+        if (gs.bullet.rebouncing) {
+            gs.bullet.pos = GetSplinePointBezierQuad(gs.bullet.pos, gs.bullet.rebCp, gs.bullet.rebEnd, gs.bullet.rebounce);
+            float prog = (float)(GetTime() - gs.bullet.rebTime)/BULLET_REBOUNCE_TIME;
+            if (prog > 1.0f) {
+                gs.bullet.exists = false;
+                addTile(gs, gs.bullet.lstEmp, Tile{{gs.bullet.thing.clr}});
+                checkDrop(gs, gs.bullet.lstEmp);
+                gs.bullet.rebouncing = false;
+            } else {
+                gs.bullet.rebounce = easeOutBounce(prog);
+            }
+        } else {
+            if (gs.bullet.pos.x - BULLET_RADIUS_H < brect.x || gs.bullet.pos.x + BULLET_RADIUS_H > brect.x + brect.width)
+                gs.bullet.vel.x *= -1.0f;
 
-        if (bulpos.row >= 0 && bulpos.row < BOARD_HEIGHT && bulpos.col >= 0 && bulpos.col < BOARD_WIDTH && !gs.board.things[bulpos.row][bulpos.col].ref.exists && (bulpos.col < BOARD_WIDTH - 1 || !(bulpos.row % 2)))
-            gs.bullet.lstEmp = {bulpos.row, bulpos.col};
-        
-        for (int i = 0; i < BOARD_HEIGHT; ++i) {
-            for (int j = 0; j < BOARD_WIDTH - (i % 2); ++j) {
-                const auto& tile = gs.board.things[i][j];
-                if (tile.ref.exists) {
-                    Vector2 tpos = getPixByPos(gs, {i, j});
-                    if (Vector2DistanceSqr(tpos, gs.bullet.pos) < (TILE_RADIUS + BULLET_RADIUS_H) * (TILE_RADIUS + BULLET_RADIUS_H)) {
-                        gs.bullet.exists = false;
-                        addTile(gs, gs.bullet.lstEmp, Tile{{gs.bullet.thing.clr}});
-                        checkDrop(gs, gs.bullet.lstEmp);
-                        break;
-                    }
+            if (bulpos.row >= 0 && bulpos.row < BOARD_HEIGHT && bulpos.col >= -1 && bulpos.col < BOARD_WIDTH && (bulpos.col == -1 || !gs.board.things[bulpos.row][bulpos.col].ref.exists)) {
+                gs.bullet.lstEmp = {bulpos.row, bulpos.col};
+                if (bulpos.row % 2) {
+                    if (bulpos.col == BOARD_WIDTH - 1)
+                        gs.bullet.lstEmp.col--;
+                    else if (bulpos.col == -1)
+                        gs.bullet.lstEmp.col++;
                 }
             }
-            if (!gs.bullet.exists)
-                break;
+            
+            for (int i = 0; i < BOARD_HEIGHT; ++i) {
+                for (int j = 0; j < BOARD_WIDTH - (i % 2); ++j) {
+                    const auto& tile = gs.board.things[i][j];
+                    if (tile.ref.exists) {
+                        Vector2 tpos = getPixByPos(gs, {i, j});
+                        if (Vector2DistanceSqr(tpos, gs.bullet.pos) < (TILE_RADIUS + BULLET_RADIUS_H) * (TILE_RADIUS + BULLET_RADIUS_H)) {
+                            gs.bullet.rebouncing = true;
+                            gs.bullet.rebounce = 0.0f;
+                            gs.bullet.rebCp = gs.bullet.pos - Vector2Normalize(gs.bullet.vel) * BULLET_REBOUNCE;
+                            gs.bullet.rebEnd = getPixByPos(gs, gs.bullet.lstEmp);
+                            gs.bullet.rebTime = GetTime();
+                            break;
+                        }
+                    }
+                }
+                if (!gs.bullet.exists)
+                    break;
+            }
+        }
+    }
+
+    void flyParticles(GameState& gs, float delta) {
+        for (int i = 0; i < gs.particles.count(); ++i) {
+            auto& prt = gs.particles.at(i);
+            if (prt.exists) {
+                prt.pos += prt.vel * delta;
+                prt.vel += GRAVITY * Vector2{0.0f, 1.0f} * delta;
+                if (prt.pos.y > GetScreenHeight())
+                    prt.exists = false;
+            }
         }
     }
 
     void update(GameState& gs) 
     {
+        auto delta = GetFrameTime() / UPDATE_ITS;
+
         if (fabs(GetMouseDelta().x) > 0) {
             Vector2 gunPos = {(float)GetScreenWidth() * 0.5f, (float)GetScreenHeight() - TILE_RADIUS};
             gs.gun.dir = atan2(gunPos.y - GetMouseY(), GetMouseX() - gunPos.x) - PI * 0.5f;      
         } else if (IsKeyDown(KEY_LEFT)) {
-            gs.gun.dir += GUN_SPEED * GetFrameTime();
+            gs.gun.dir += gs.gun.speed * delta;
+            gs.gun.speed += GUN_ACC * delta;
         } else if (IsKeyDown(KEY_RIGHT)) {
-            gs.gun.dir -= GUN_SPEED * GetFrameTime();
+            gs.gun.dir -= gs.gun.speed * delta;
+            gs.gun.speed += GUN_ACC * delta;
+        } else {
+            gs.gun.speed = GUN_START_SPEED;
         }
+        gs.gun.speed = std::clamp(gs.gun.speed, GUN_START_SPEED, GUN_FULL_SPEED);
         gs.gun.dir = std::clamp(gs.gun.dir, -PI * 0.45f, PI * 0.45f);
 
         if ((IsKeyPressed(KEY_SPACE) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) && !gs.bullet.exists)
             shootAndRearm(gs);
-        flyBullet(gs);
-        flyParticles(gs);
+        flyBullet(gs, delta);
+        flyParticles(gs, delta);
 
         auto mpos = getPosByPix(gs, {(float)GetMouseX(), (float)GetMouseY()});
         if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) && mpos.row >= 0 && mpos.row < BOARD_HEIGHT && mpos.col >= 0 && mpos.col < BOARD_WIDTH) {
             addTile(gs, mpos, Tile{});
-            gs.board.things[mpos.row][mpos.col].thing.clr = GetRandomValue(0, 5);
+            gs.board.things[mpos.row][mpos.col].thing.clr = GetRandomValue(0, COLORS.size() - 1);
         }
     }
 
@@ -301,11 +340,10 @@ extern "C" {
         DrawRectangleRec({brect.x - 3.0f, 0.0f, 3.0f, (float)GetScreenHeight()}, WHITE);
         DrawRectangleRec({brect.x + brect.width, 0.0f, 3.0f, (float)GetScreenHeight()}, WHITE);
 
-        auto mpos = getPosByPix(gs, {(float)GetMouseX(), (float)GetMouseY()});
-        std::map<int, std::map<int, bool>> visited;
-        if (isConnectedToTop(gs, mpos, visited))
-            DrawCircleV(getPixByPos(gs, mpos), 5, WHITE);
-
+        //auto mpos = getPosByPix(gs, {(float)GetMouseX(), (float)GetMouseY()});
+        //std::map<int, std::map<int, bool>> visited;
+        //if (isConnectedToTop(gs, mpos, visited))
+        //    DrawCircleV(getPixByPos(gs, mpos), 5, WHITE);
     }
 
     void drawBullet(const GameState& gs) {
@@ -320,7 +358,7 @@ extern "C" {
         drawThing(gs, gunPos, gs.gun.armed);
 
         const int NTICKS = 50;
-        const float TICKSTEP = 100;
+        const float TICKSTEP = TILE_RADIUS * 2;
         Vector2 pos = gunPos;
         float dir = gs.gun.dir + PI * 0.5f;
         for (int i = 0; i < NTICKS; ++i) {
@@ -331,7 +369,8 @@ extern "C" {
 
     DLL_EXPORT void updateAndDraw(GameState& gs) 
     {
-        update(gs);
+        for (int i = 0; i < UPDATE_ITS; ++i)
+            update(gs);
 
         BeginDrawing();
         ClearBackground(BLACK);
