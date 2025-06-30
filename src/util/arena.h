@@ -69,4 +69,10 @@ public:
     size_t count() {return _firstAvailableIdx;}
     size_t capacity() {return CAP;}
 
+    void clear() {
+        _firstAvailableIdx = 0;
+        for (size_t i = 0; i < CAP; ++i)
+            _counters[i] += CAP - i;
+    }
+
 };

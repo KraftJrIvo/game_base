@@ -1,13 +1,12 @@
 #include "game.h"
+#include "game_cfg.h"
 #include "raylib.h"
 
 #include "../util/vec_ops.h"
 #include "raymath.h"
 #include <cmath>
-#include <cstddef>
 #include <limits>
 #include <map>
-#include <list>
 
 #if defined(_WIN32) || defined(_WIN64)
 #define DLL_EXPORT __declspec(dllexport)
@@ -23,7 +22,7 @@ extern "C" {
     }
 
     bool checkBounds(const GameState& gs, const ThingPos& pos) {
-        return (pos.row >= 0 && pos.row < BOARD_HEIGHT && pos.col >= 0 && pos.col < BOARD_WIDTH);
+        return (pos.row >= 0 && pos.row < BOARD_HEIGHT && pos.col >= 0 && pos.col < ((pos.row % 2) ? (BOARD_WIDTH - 1) : (BOARD_WIDTH)));
     }
 
     Rectangle getBoardRect(const GameState& gs) {
@@ -46,6 +45,22 @@ extern "C" {
         return {offset + brec.x + TILE_RADIUS + pos.col * TILE_RADIUS * 2, (float)(brec.y + (pos.row + 0.5f) * ROW_HEIGHT)};
     }
 
+    int countBotEmpRows(const GameState& gs) {
+        int n = 0;
+        bool keep = true;
+        for (int row = BOARD_HEIGHT - 1; row >= 0; --row) {
+            for (int col = 0; col < BOARD_WIDTH - (row % 2); ++col) {
+                if (gs.board.things[row][col].ref.exists) {
+                    keep = false;
+                    break;
+                }
+            }
+            if (!keep) break;
+            n++;
+        }
+        return n;
+    }
+
     bool checkFullRow(const GameState& gs, int row) {
         bool fullrow = true;
         for (int i = 0; i < BOARD_WIDTH - (row % 2); ++i) {
@@ -62,11 +77,11 @@ extern "C" {
             auto& dis = gs.board.things[pos.row][pos.col];
             if (checkBounds(gs, TOGO[i])) {
                 auto& nei = gs.board.things[TOGO[i].row][TOGO[i].col];
-                if (nei.ref.exists) {
+                nei.neighs[TOGOI[i]].exists = exists;
+                if (exists) nei.neighs[TOGOI[i]].pos = pos;
+                if (nei.ref.exists)
                     dis.neighs[i] = nei.ref;
-                    nei.neighs[TOGOI[i]].exists = exists;
-                    if (exists) nei.neighs[TOGOI[i]].pos = pos;
-                } else
+                else
                     dis.neighs[i].exists = false;
             } else {
                 dis.neighs[i].exists = false;
@@ -83,8 +98,8 @@ extern "C" {
 
         int i = 0;
         while ((pos.row - i > 0) && checkFullRow(gs, pos.row - i)) i++;
-        if (i > 0 && pos.row - i <= gs.board.nFullRows)
-            gs.board.nFullRows = pos.row + 1;
+        if (i > 0 && pos.row - i <= gs.board.nFulRowsTop)
+            gs.board.nFulRowsTop = pos.row + 1;
     }
 
     void addParticle(GameState& gs, const Thing& thing, Vector2 pos, Vector2 vel) {
@@ -94,8 +109,8 @@ extern "C" {
     void removeThing(GameState& gs, const ThingPos& pos) {
         gs.board.things[pos.row][pos.col].ref.exists = false;
         updateNeighs(gs, pos, false);
-        if (pos.row < gs.board.nFullRows)
-            gs.board.nFullRows = pos.row + 1;
+        if (pos.row < gs.board.nFulRowsTop)
+            gs.board.nFulRowsTop = pos.row + 1;
     }
 
     void rearm(GameState& gs) {
@@ -108,7 +123,7 @@ extern "C" {
         
         gs.seed = rand() % std::numeric_limits<int>::max();
 
-        for (int row = 0; row < BOARD_HEIGHT - 5; ++row)
+        for (int row = 0; row < BOARD_HEIGHT - BOARD_EMP_BOT_ROW_GAP; ++row)
             for (int col = 0; col < BOARD_WIDTH - (row % 2); ++col)
                  addTile(gs, {row, col}, Tile{{(unsigned char)getRandVal(gs, 0, COLORS.size() - 1)}, {true, {row, col}}, {0,0,0,0,0,0}});
 
@@ -128,16 +143,18 @@ extern "C" {
         rearm(gs);
     }
 
-    void checkDropRecur(GameState& gs, const ThingPos& pos, unsigned char clr, std::vector<ThingPos>& todrop, std::map<int, std::map<int, bool>>& visited) 
+    void checkDropRecur(GameState& gs, const ThingPos& pos, unsigned char clr, Arena<MAX_TODROP, ThingPos>& todrop, std::map<int, std::map<int, bool>>& visited, bool first = true) 
     {
         if (visited.count(pos.row) && visited[pos.row].count(pos.col))
             return;
         visited[pos.row][pos.col] = true;
-        const auto& tile = gs.board.things[pos.row][pos.col];
-        if (tile.thing.clr == clr) {
-            todrop.push_back(pos);
-            for (auto& n : tile.neighs)
-                if (n.exists) checkDropRecur(gs, n.pos, clr, todrop, visited);
+        if (checkBounds(gs, pos)) {
+            const auto& tile = gs.board.things[pos.row][pos.col];
+            if ((tile.ref.exists && tile.thing.clr == clr) || first) {
+                if (tile.ref.exists && tile.thing.clr == clr) todrop.acquire(pos);
+                for (auto& n : tile.neighs)
+                    if (n.exists) checkDropRecur(gs, n.pos, clr, todrop, visited, false);
+            }
         }
     }
 
@@ -147,10 +164,10 @@ extern "C" {
             return false;
         visited[pos.row][pos.col] = true;
         if (checkBounds(gs, pos)) {
-            auto& thing = gs.board.things[pos.row][pos.col];
-            if (thing.ref.exists) {
-                bool connected = (pos.row == gs.board.nFullRows - 1);
-                for (auto& n : thing.neighs)
+            auto& tile = gs.board.things[pos.row][pos.col];
+            if (tile.ref.exists) {
+                bool connected = (pos.row == gs.board.nFulRowsTop - 1);
+                for (auto& n : tile.neighs)
                     if (n.exists && !connected) connected |= isConnectedToTop(gs, n.pos, visited);
                 visited[pos.row][pos.col] = connected;
                 return connected;
@@ -166,26 +183,61 @@ extern "C" {
         visited[pos.row][pos.col] = true;
         std::map<int, std::map<int, bool>> visCon;
         if (checkBounds(gs, pos) && (!check || !isConnectedToTop(gs, pos, visCon))) {
-            auto& thing = gs.board.things[pos.row][pos.col];
-            if (thing.ref.exists) {
+            auto& tile = gs.board.things[pos.row][pos.col];
+            if (tile.ref.exists) {
                 removeThing(gs, pos);
                 addParticle(gs, gs.board.things[pos.row][pos.col].thing, getPixByPos(gs, pos), Vector2Zero());
-                for (auto& n : thing.neighs)
+                for (auto& n : tile.neighs)
                     if (n.exists) massRemoveUnconnected(gs, n.pos, visited, false);
             }
         }
     }
 
-    void checkDrop(GameState& gs, const ThingPos& pos) {
-        std::vector<ThingPos> todrop;
-        std::map<int, std::map<int, bool>> visited;
-        checkDropRecur(gs, pos, gs.board.things[pos.row][pos.col].thing.clr, todrop, visited);
-        if (todrop.size() >= N_TO_DROP) {
-            for (auto& td : todrop) {
-                removeThing(gs, td);
-                addParticle(gs, gs.board.things[td.row][td.col].thing, getPixByPos(gs, td), gs.bullet.vel * 0.1f);
+    void addShakeRecur(GameState& gs, const ThingPos& pos, std::map<int, std::map<int, bool>>& visited, unsigned char clr, float shake, int depth, int curdepth = 0, bool clrstreak = true)
+    {
+        if (visited.count(pos.row) && visited[pos.row].count(pos.col) || curdepth >= depth)
+            return;
+        visited[pos.row][pos.col] = true;
+        auto& tile = gs.board.things[pos.row][pos.col];
+        if (tile.ref.exists && curdepth == 0) tile.shake = std::max(tile.shake, shake / (curdepth + 1));
+        if (tile.ref.exists || curdepth == 0) {
+            for (int i = 0; i < 6; ++i) {
+                if (checkBounds(gs, TOGO[i])) {
+                    auto& n = gs.board.things[TOGO[i].row][TOGO[i].col];
+                    bool samecolor = (clrstreak && n.thing.clr == clr);
+                    if (n.ref.exists) n.shake = std::max(n.shake, samecolor ? shake : (shake / (curdepth + 2)));
+                }
             }
-            for (auto& td : todrop) {
+            if (clrstreak) {
+                for (int i = 0; i < 6; ++i) {
+                    if (checkBounds(gs, TOGO[i])) {
+                        auto& n = gs.board.things[TOGO[i].row][TOGO[i].col];
+                        bool samecolor = (n.thing.clr == clr);
+                        if (n.ref.exists && samecolor) addShakeRecur(gs, n.ref.pos, visited, clr, shake, depth, curdepth, true);
+                    }
+                }
+            }
+            if (!clrstreak || curdepth == 0) {
+                for (int i = 0; i < 6; ++i) {
+                    if (checkBounds(gs, TOGO[i])) {
+                        auto& n = gs.board.things[TOGO[i].row][TOGO[i].col];
+                        bool samecolor = (n.thing.clr == clr);
+                        if (n.ref.exists && !samecolor) addShakeRecur(gs, n.ref.pos, visited, clr, shake, depth, curdepth + 1, false);
+                    }
+                }
+            }
+        }
+    }
+
+    void checkDrop(GameState& gs, const ThingPos& pos) {
+        if (gs.bullet.todrop.count() >= N_TO_DROP) {
+            for (int i = 0; i < gs.bullet.todrop.count(); ++i) {
+                auto& td = gs.bullet.todrop.at(i);
+                removeThing(gs, td);
+                addParticle(gs, gs.board.things[td.row][td.col].thing, getPixByPos(gs, td), {gs.bullet.vel.x * 0.1f, -500.5f});
+            }
+            for (int i = 0; i < gs.bullet.todrop.count(); ++i) {
+                auto& td = gs.bullet.todrop.at(i);
                 auto& thing = gs.board.things[td.row][td.col];
                 for (auto& n : thing.neighs) {
                     std::map<int, std::map<int, bool>> visited;
@@ -193,7 +245,7 @@ extern "C" {
                 }
             }
         }
-
+        gs.bullet.todrop.clear();
     }
 
     float easeOutBounce(float x) 
@@ -228,6 +280,7 @@ extern "C" {
             if (prog > 1.0f) {
                 gs.bullet.exists = false;
                 addTile(gs, gs.bullet.lstEmp, Tile{{gs.bullet.thing.clr}});
+                gs.bullet.todrop.acquire(gs.bullet.lstEmp);
                 checkDrop(gs, gs.bullet.lstEmp);
                 gs.bullet.rebouncing = false;
             } else {
@@ -252,7 +305,12 @@ extern "C" {
                     const auto& tile = gs.board.things[i][j];
                     if (tile.ref.exists) {
                         Vector2 tpos = getPixByPos(gs, {i, j});
-                        if (Vector2DistanceSqr(tpos, gs.bullet.pos) < (TILE_RADIUS + BULLET_RADIUS_H) * (TILE_RADIUS + BULLET_RADIUS_H)) {
+                        if (Vector2DistanceSqr(tpos, gs.bullet.pos) < (TILE_RADIUS + BULLET_RADIUS_H) * (TILE_RADIUS + BULLET_RADIUS_H)) 
+                        {
+                            std::map<int, std::map<int, bool>> vis;
+                            checkDropRecur(gs, gs.bullet.lstEmp, gs.bullet.thing.clr, gs.bullet.todrop, vis);
+                            std::map<int, std::map<int, bool>> vis2;
+                            addShakeRecur(gs, gs.bullet.lstEmp, vis2, gs.bullet.thing.clr, SHAKE_TIME, SHAKE_DEPTH);
                             gs.bullet.rebouncing = true;
                             gs.bullet.rebounce = 0.0f;
                             gs.bullet.rebCp = gs.bullet.pos - Vector2Normalize(gs.bullet.vel) * BULLET_REBOUNCE;
@@ -269,15 +327,18 @@ extern "C" {
     }
 
     void flyParticles(GameState& gs, float delta) {
+        bool someInFrame = false;
         for (int i = 0; i < gs.particles.count(); ++i) {
             auto& prt = gs.particles.at(i);
             if (prt.exists) {
                 prt.pos += prt.vel * delta;
                 prt.vel += GRAVITY * Vector2{0.0f, 1.0f} * delta;
-                if (prt.pos.y > GetScreenHeight())
-                    prt.exists = false;
+                if (prt.pos.y < GetScreenHeight())
+                    someInFrame = true;
             }
         }
+        if (!someInFrame)
+            gs.particles.clear();
     }
 
     void update(GameState& gs) 
@@ -302,13 +363,29 @@ extern "C" {
         if ((IsKeyPressed(KEY_SPACE) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) && !gs.bullet.exists)
             shootAndRearm(gs);
         flyBullet(gs, delta);
-        flyParticles(gs, delta);
+    }
+
+    void updateOnce(GameState& gs) 
+    {
+        for (int i = 0; i < BOARD_HEIGHT; ++i) {
+            for (int j = 0; j < BOARD_WIDTH - (i % 2); ++j) {
+                Tile& tile = gs.board.things[i][j];
+                if (tile.ref.exists) {
+                    if (tile.shake < SHAKE_TIME || gs.bullet.todrop.count() < N_TO_DROP - 1)
+                        tile.shake = std::max(tile.shake - GetFrameTime(), 0.0f);
+                    else
+                        tile.shake = std::min(tile.shake + GetFrameTime() * 2, MAX_SHAKE);
+                }
+            }
+        }
 
         auto mpos = getPosByPix(gs, {(float)GetMouseX(), (float)GetMouseY()});
         if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) && mpos.row >= 0 && mpos.row < BOARD_HEIGHT && mpos.col >= 0 && mpos.col < BOARD_WIDTH) {
             addTile(gs, mpos, Tile{});
             gs.board.things[mpos.row][mpos.col].thing.clr = GetRandomValue(0, COLORS.size() - 1);
         }
+
+        flyParticles(gs, GetFrameTime());
     }
 
     void drawThing(const GameState& gs, Vector2 pos, const Thing& thing) {
@@ -332,7 +409,8 @@ extern "C" {
                 const Tile& tile = gs.board.things[i][j];
                 if (tile.ref.exists) {
                     Vector2 tpos = getPixByPos(gs, {i, j});
-                    drawThing(gs, tpos, tile.thing);
+                    Vector2 shake = (2.0f * Vector2{RAND_FLOAT - 0.5f, RAND_FLOAT - 0.5f}) * tile.shake * SHAKE_STR;
+                    drawThing(gs, tpos + shake, tile.thing);
                 }
             }
         }
@@ -371,6 +449,7 @@ extern "C" {
     {
         for (int i = 0; i < UPDATE_ITS; ++i)
             update(gs);
+        updateOnce(gs);
 
         BeginDrawing();
         ClearBackground(BLACK);
