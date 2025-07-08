@@ -190,7 +190,7 @@ void processInput(BaseState& bs, GameState& gs)
         }
         bs.gcs.frame++;
     } else {
-        if (IsKeyPressed(KEY_S))
+        if (IsKeyPressed(KEY_S)/* || IsKeyPressed(KEY_SPACE)*/)
             bs.saveState(gs);
         if (IsKeyPressed(KEY_L))
             bs.loadState(gs);
@@ -207,6 +207,7 @@ int main()
     BaseState bs(DLL_NAME);
     GameState gs;
 
+    bs.checkLoadDLL();
     bs.gameInit(gs);
 
     while (!WindowShouldClose()) {

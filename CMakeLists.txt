@@ -16,36 +16,49 @@ add_compile_definitions(_SILENCE_ALL_CXX20_DEPRECATION_WARNINGS)
 add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
 project(GAME_BASE VERSION 0.0.1 DESCRIPTION "raylib game base" LANGUAGES CXX C)
-set(BUILD_SHARED_LIBS ON)
 
 add_executable(embedfile "src/util/embedfile.c")
 add_custom_command(OUTPUT res_icon.c COMMAND embedfile res_icon ${GAME_BASE_SOURCE_DIR}/res/icon.png DEPENDS ${GAME_BASE_SOURCE_DIR}/res/icon.png)
+add_custom_command(OUTPUT res_tiles.c COMMAND embedfile res_tiles ${GAME_BASE_SOURCE_DIR}/res/tiles.png DEPENDS ${GAME_BASE_SOURCE_DIR}/res/tiles.png)
 
 # TARGET
-set(GAME_BASE_SOURCE_FILES    
-  "src/base.cpp"
-  res_icon.c
-)
-add_executable(GAME_BASE ${GAME_BASE_SOURCE_FILES})
+if (GAME_BASE_SHARED_BUILD)
+  set(GAME_BASE_SOURCE_FILES    
+    "src/base.cpp"
+    res_icon.c
+  )
+  add_executable(GAME_BASE ${GAME_BASE_SOURCE_FILES})
+endif()
 
 set(GAME_SOURCE_FILES    
   "src/game/game.cpp"
+  res_tiles.c
 )
 add_library(GAME_NEW SHARED ${GAME_SOURCE_FILES})
+target_compile_definitions(GAME_NEW PRIVATE GAME_BASE_DLL)
 add_custom_command(TARGET GAME_NEW
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E remove -f ${GAME_BASE_SOURCE_DIR}/build/GAME.dll
     COMMENT "Removing old dll"
 )
 
+set(GAME_PURE_SOURCE_FILES    
+  "src/game/game.cpp"
+  "src/pure.cpp"
+  res_icon.c
+  res_tiles.c
+)
+add_executable(GAME_PURE ${GAME_PURE_SOURCE_FILES})
+
 # DEPENDENCIES
 set(RAYLIB_VERSION 5.5.4)
-set(BUILD_SHARED_LIBS ON CACHE BOOL "Build raylib as shared library" FORCE)
-set(RAYLIB_BUILD_SHARED ON CACHE BOOL "Build raylib as shared library" FORCE)
+if (GAME_BASE_SHARED_BUILD)
+  set(BUILD_SHARED_LIBS ON CACHE BOOL "Build raylib as shared library" FORCE)
+endif()
 find_package(raylib ${RAYLIB_VERSION} QUIET) # QUIET or REQUIRED
 if (NOT raylib_FOUND) # If there's none, fetch and build raylib
   include(FetchContent)
-  set(RAYLIB_LIBTYPE "SHARED")
+  set(CMAKE_TLS_VERIFY FALSE)
   FetchContent_Declare(
     raylib
     DOWNLOAD_EXTRACT_TIMESTAMP OFF
@@ -60,7 +73,6 @@ if (NOT raylib_FOUND) # If there's none, fetch and build raylib
     set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE) # don't build the supplied examples
   endif()
 endif()
-set_target_properties(raylib PROPERTIES BUILD_TYPE "SHARED")
 target_compile_options(raylib PUBLIC -DRAYMATH_DISABLE_CPP_OPERATORS)
 target_compile_options(raylib PUBLIC -DMANUAL_INPUT_EVENTS_POLLING)
 target_compile_options(raylib PUBLIC -DGRAPHICS_API_OPENGL_33)
@@ -77,12 +89,15 @@ if (NOT raylib_FOUND)
   FetchContent_MakeAvailable(dylib)
 endif()
 
-target_link_libraries(GAME_BASE PUBLIC raylib dylib)
+target_link_libraries(GAME_PURE PUBLIC raylib)
 target_link_libraries(GAME_NEW PUBLIC raylib)
 
-add_custom_command(TARGET GAME_BASE
+if (GAME_BASE_SHARED_BUILD)
+  target_link_libraries(GAME_BASE PUBLIC raylib dylib)
+  add_custom_command(TARGET GAME_BASE
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_CURRENT_BINARY_DIR}/_deps/raylib-build/raylib/raylib.dll
         ${CMAKE_CURRENT_BINARY_DIR}/raylib.dll
-)
+  )
+endif()

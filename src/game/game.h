@@ -5,7 +5,7 @@
 #include "../util/arena.h"
 #include "raymath.h"
 
-#define BOARD_WIDTH   12
+#define BOARD_WIDTH   9
 #define BOARD_HEIGHT  36
 #define MAX_PARTICLES 1024
 #define MAX_TODROP    1024
@@ -20,7 +20,7 @@ struct ThingRef {
 };
 
 struct Thing {
-    unsigned char clr;
+    unsigned char clr, shp, sym;
 };
 
 struct Tile {
@@ -34,6 +34,8 @@ struct Board {
     float pos = 0;
     int nFulRowsTop = 0;
     std::array<std::array<Tile, BOARD_WIDTH>, BOARD_HEIGHT> things;
+    bool even = false;
+    double moveTime, totalMoveTime;
 };
 
 struct Gun {
@@ -69,4 +71,12 @@ struct GameState {
     Gun gun;
     Arena<MAX_PARTICLES, Particle> particles;
     Bullet bullet;
+    int n_params = 1;
 };
+
+#ifndef GAME_BASE_DLL
+extern "C" {
+    void init(GameState& gs);
+    void updateAndDraw(GameState& gs);
+}
+#endif
