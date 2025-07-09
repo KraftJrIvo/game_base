@@ -6,10 +6,12 @@
 #include <functional>
 #include <vector>
 #include <fstream>
+#include <iostream>
 
-#include "game/game.h"
 #include "raylib.h"
-#include "util/zpp_bits.h"
+
+#include "../game/src/game.h"
+#include "../game/src/util/zpp_bits.h"
 
 #define NOGDI
 #define NOUSER
@@ -18,6 +20,7 @@
 extern "C" const unsigned char res_icon[];
 extern "C" const size_t        res_icon_len;
 
+const std::string DLL_PATH = "..\\game\\build\\";
 const std::string DLL_NAME = "GAME";
 const std::string NEW_DLL_POSTFIX = "_NEW";
 const std::string WIN_NOM = "A GAME";
@@ -53,7 +56,7 @@ struct BaseState {
         dllName(dllName),
         gameDllPath(std::filesystem::current_path() / (dllName + ".dll")),
         gameNewDllPath(std::filesystem::current_path() / (dllName + NEW_DLL_POSTFIX + ".dll")),
-        dll(std::filesystem::exists(gameDllPath) ? dllName : (dllName + NEW_DLL_POSTFIX))
+        dll(std::filesystem::exists(gameDllPath) ? gameDllPath : gameNewDllPath)
     {
         setFunc();
     }
@@ -203,7 +206,7 @@ int main()
 {
     initWindow();
 
-    BaseState bs(DLL_NAME);
+    BaseState bs(DLL_PATH + DLL_NAME);
     GameState gs;
 
     bs.checkLoadDLL();

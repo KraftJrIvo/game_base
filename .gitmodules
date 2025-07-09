@@ -1,0 +1,3 @@
+[submodule "hex_game"]
+	path = game
+	url = https://github.com/KraftJrIvo/hex_game.git

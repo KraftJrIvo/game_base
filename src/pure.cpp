@@ -3,8 +3,9 @@
 #include <string>
 #include <time.h>
 
-#include "game/game.h"
 #include "raylib.h"
+
+#include "../game/src/game.h"
 
 extern "C" const unsigned char res_icon[];
 extern "C" const size_t        res_icon_len;

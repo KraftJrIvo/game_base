@@ -17,9 +17,9 @@ add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
 project(GAME_BASE VERSION 0.0.1 DESCRIPTION "raylib game base" LANGUAGES CXX C)
 
-add_executable(embedfile "src/util/embedfile.c")
+add_subdirectory(game)
+
 add_custom_command(OUTPUT res_icon.c COMMAND embedfile res_icon ${GAME_BASE_SOURCE_DIR}/res/icon.png DEPENDS ${GAME_BASE_SOURCE_DIR}/res/icon.png)
-add_custom_command(OUTPUT res_tiles.c COMMAND embedfile res_tiles ${GAME_BASE_SOURCE_DIR}/res/tiles.png DEPENDS ${GAME_BASE_SOURCE_DIR}/res/tiles.png)
 
 # TARGET
 if (GAME_BASE_SHARED_BUILD)
@@ -28,27 +28,13 @@ if (GAME_BASE_SHARED_BUILD)
     res_icon.c
   )
   add_executable(GAME_BASE ${GAME_BASE_SOURCE_FILES})
+else()
+  set(GAME_PURE_SOURCE_FILES    
+    "src/pure.cpp"
+    res_icon.c
+  )
+  add_executable(GAME_PURE ${GAME_PURE_SOURCE_FILES})
 endif()
-
-set(GAME_SOURCE_FILES    
-  "src/game/game.cpp"
-  res_tiles.c
-)
-add_library(GAME_NEW SHARED ${GAME_SOURCE_FILES})
-target_compile_definitions(GAME_NEW PRIVATE GAME_BASE_DLL)
-add_custom_command(TARGET GAME_NEW
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E remove -f ${GAME_BASE_SOURCE_DIR}/build/GAME.dll
-    COMMENT "Removing old dll"
-)
-
-set(GAME_PURE_SOURCE_FILES    
-  "src/game/game.cpp"
-  "src/pure.cpp"
-  res_icon.c
-  res_tiles.c
-)
-add_executable(GAME_PURE ${GAME_PURE_SOURCE_FILES})
 
 # DEPENDENCIES
 set(RAYLIB_VERSION 5.5.4)
@@ -77,27 +63,25 @@ target_compile_options(raylib PUBLIC -DRAYMATH_DISABLE_CPP_OPERATORS)
 target_compile_options(raylib PUBLIC -DMANUAL_INPUT_EVENTS_POLLING)
 target_compile_options(raylib PUBLIC -DGRAPHICS_API_OPENGL_33)
 
-set(DYLIB_VERSION v2.2.1)
-find_package(dylib QUIET)
-if (NOT raylib_FOUND)
-  include(FetchContent)
-  FetchContent_Declare(
-      dylib
-      GIT_REPOSITORY "https://github.com/martin-olivier/dylib"
-      GIT_TAG        "v2.2.1"
-  )
-  FetchContent_MakeAvailable(dylib)
-endif()
-
-target_link_libraries(GAME_PURE PUBLIC raylib)
-target_link_libraries(GAME_NEW PUBLIC raylib)
-
 if (GAME_BASE_SHARED_BUILD)
-  target_link_libraries(GAME_BASE PUBLIC raylib dylib)
+  set(DYLIB_VERSION v2.2.1)
+  find_package(dylib QUIET)
+  if (NOT dylib_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(
+        dylib
+        GIT_REPOSITORY "https://github.com/martin-olivier/dylib"
+        GIT_TAG        "v2.2.1"
+    )
+    FetchContent_MakeAvailable(dylib)
+  endif()
+  target_link_libraries(GAME_BASE PUBLIC GAME_NEW raylib dylib)
   add_custom_command(TARGET GAME_BASE
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_CURRENT_BINARY_DIR}/_deps/raylib-build/raylib/raylib.dll
         ${CMAKE_CURRENT_BINARY_DIR}/raylib.dll
   )
+else()
+  target_link_libraries(GAME_PURE PUBLIC GAME raylib)
 endif()
