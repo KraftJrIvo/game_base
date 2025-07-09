@@ -359,15 +359,18 @@ extern "C" {
                 gs.bullet.lstEmp = {bulpos.row, bulpos.col};
                 if ((bulpos.row + gs.board.even) % 2) {
                     if (bulpos.col == BOARD_WIDTH - 1) {
-                        if (gs.board.things[bulpos.row][bulpos.col - 1].ref.exists)
+                        if (gs.board.things[bulpos.row][bulpos.col - 1].ref.exists) {
                             gs.bullet.lstEmp.row++;
-                        else
+                        } else {
                             gs.bullet.lstEmp.col--;
+                        }
                     } else if (bulpos.col == -1) {
-                        if (gs.board.things[bulpos.row][bulpos.col + 1].ref.exists)
+                        if (gs.board.things[bulpos.row][bulpos.col + 1].ref.exists) {
                             gs.bullet.lstEmp.row++;
-                        else
                             gs.bullet.lstEmp.col++;
+                        } else {
+                            gs.bullet.lstEmp.col++;
+                        }
                     }
                 }
             }
