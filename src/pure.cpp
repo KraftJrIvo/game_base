@@ -60,7 +60,6 @@ int main()
 {
     initWindow();
 
-    BaseState bs;
     GameState gs;
 
     init(gs);
