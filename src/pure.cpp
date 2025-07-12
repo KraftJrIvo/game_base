@@ -30,7 +30,7 @@ void initWindow() {
     SetExitKey(KEY_F4);
 }
 
-void processInput(BaseState& bs, GameState& gs) 
+void processInput(BaseState& bs, GameAssets& ga, GameState& gs) 
 {
     PollInputEvents();
 
@@ -60,13 +60,15 @@ int main()
 {
     initWindow();
 
+    BaseState bs;
+    GameAssets ga;
     GameState gs;
 
-    init(gs);
+    init(ga, gs);
 
     while (!WindowShouldClose()) {
-        processInput(bs, gs);
-        updateAndDraw(gs);
+        processInput(bs, ga, gs);
+        updateAndDraw(ga, gs);
     }
 
     CloseWindow();
