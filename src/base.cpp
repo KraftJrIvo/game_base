@@ -11,7 +11,7 @@
 #include "raylib.h"
 
 #include "../game/src/game.h"
-#include "../game/src/util/zpp_bits.h"
+#include "util/zpp_bits.h"
 
 #define NOGDI
 #define NOUSER
@@ -43,8 +43,8 @@ struct GameCasesState {
 struct BaseState {
     Vector2 winSz, baseWinSz;
     std::string dllName;
-    std::function<void(GameState&)> gameInit;
-    std::function<void(GameState&)> gameUpdateAndDraw;
+    std::function<void(GameAssets&, GameState&)> gameInit;
+    std::function<void(const GameAssets&, GameState&)> gameUpdateAndDraw;
     std::filesystem::path gameDllPath;
     std::filesystem::path gameNewDllPath;
     dylib dll;
@@ -62,8 +62,8 @@ struct BaseState {
     }
 
     void setFunc() {
-        gameInit = dll.get_function<void(GameState&)>("init");
-        gameUpdateAndDraw = dll.get_function<void(GameState&)>("updateAndDraw");
+        gameInit = dll.get_function<void(GameAssets&, GameState&)>("init");
+        gameUpdateAndDraw = dll.get_function<void(const GameAssets&, GameState&)>("updateAndDraw");
     }
 
     void reloadDll() {
@@ -111,7 +111,7 @@ void initWindow() {
     SetExitKey(KEY_F4);
 }
 
-void processInput(BaseState& bs, GameState& gs) 
+void processInput(BaseState& bs, GameAssets& ga, GameState& gs) 
 {
     PollInputEvents();
 
@@ -197,7 +197,7 @@ void processInput(BaseState& bs, GameState& gs)
         if (IsKeyPressed(KEY_L))
             bs.loadState(gs);
         if (IsKeyPressed(KEY_R))
-            bs.gameInit(gs);
+            bs.gameInit(ga, gs);
     }
 
 }
@@ -207,16 +207,17 @@ int main()
     initWindow();
 
     BaseState bs(DLL_PATH + DLL_NAME);
+    GameAssets ga;
     GameState gs;
 
     bs.checkLoadDLL();
-    bs.gameInit(gs);
+    bs.gameInit(ga, gs);
 
     while (!WindowShouldClose()) {
         bs.checkLoadDLL();
-        processInput(bs, gs);
+        processInput(bs, ga, gs);
 
-        bs.gameUpdateAndDraw(gs);
+        bs.gameUpdateAndDraw(ga, gs);
     }
 
     CloseWindow();

@@ -28,6 +28,7 @@ if (GAME_BASE_SHARED_BUILD)
     res_icon.c
   )
   add_executable(GAME_BASE ${GAME_BASE_SOURCE_FILES})
+  target_compile_definitions(GAME_BASE PRIVATE GAME_BASE_DLL)
 else()
   set(GAME_PURE_SOURCE_FILES    
     "src/pure.cpp"
