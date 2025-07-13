@@ -13,7 +13,6 @@ extern "C" const size_t        res_icon_len;
 const std::string DLL_NAME = "GAME";
 const std::string NEW_DLL_POSTFIX = "_NEW";
 const std::string WIN_NOM = "A GAME";
-const Vector2 WIN_DEF_SZ  = {1024, 720};
 const int TARGET_FPS = 60;
 
 struct BaseState {
@@ -24,7 +23,7 @@ void initWindow() {
     SetTraceLogLevel(LOG_ERROR);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(WIN_DEF_SZ.x, WIN_DEF_SZ.y, WIN_NOM.c_str());
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WIN_NOM.c_str());
     SetWindowIcon(LoadImageFromMemory(".png", res_icon, res_icon_len));
     SetTargetFPS(TARGET_FPS);    
     SetExitKey(KEY_F4);
