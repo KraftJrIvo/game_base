@@ -23,7 +23,7 @@ extern "C" const size_t        res_icon_len;
 const std::string DLL_PATH = "..\\game\\build\\";
 const std::string DLL_NAME = "GAME";
 const std::string NEW_DLL_POSTFIX = "_NEW";
-const std::string WIN_NOM = "A GAME";
+const std::string WIN_NOM = "HEX GAME";
 const int TARGET_FPS = 60;
 
 struct GameCase {

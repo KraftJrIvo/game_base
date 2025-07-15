@@ -22,18 +22,22 @@ add_subdirectory(game)
 add_custom_command(OUTPUT res_icon.c COMMAND embedfile res_icon ${GAME_BASE_SOURCE_DIR}/res/icon.png DEPENDS ${GAME_BASE_SOURCE_DIR}/res/icon.png)
 
 # TARGET
+set(GAME_BASE_SOURCE_FILES    
+  "src/base.cpp"
+  res_icon.c
+  "res/icon.rc"
+)
+
 if (GAME_BASE_SHARED_BUILD)
-  set(GAME_BASE_SOURCE_FILES    
-    "src/base.cpp"
-    res_icon.c
+  set_target_properties(GAME_NEW
+      PROPERTIES
+      ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/game/build"
+      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/game/build"
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/game/build"
   )
   add_executable(GAME_BASE ${GAME_BASE_SOURCE_FILES})
   target_compile_definitions(GAME_BASE PRIVATE GAME_BASE_DLL)
 else()
-  set(GAME_PURE_SOURCE_FILES    
-    "src/pure.cpp"
-    res_icon.c
-  )
   add_executable(GAME_PURE ${GAME_PURE_SOURCE_FILES})
 endif()
 
