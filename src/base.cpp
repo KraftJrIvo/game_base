@@ -44,6 +44,8 @@ struct BaseState {
     Vector2 winSz, baseWinSz;
     std::string dllName;
     std::function<void(GameAssets&, GameState&)> gameInit;
+    std::function<void(const GameState&)> gameSaveUserData;
+    std::function<void(GameState&)> gameLoadUserData;
     std::function<void(const GameAssets&, GameState&)> gameUpdateAndDraw;
     std::filesystem::path gameDllPath;
     std::filesystem::path gameNewDllPath;
@@ -63,6 +65,8 @@ struct BaseState {
 
     void setFunc() {
         gameInit = dll.get_function<void(GameAssets&, GameState&)>("init");
+        gameSaveUserData = dll.get_function<void(const GameState&)>("saveUserData");
+        gameLoadUserData = dll.get_function<void(GameState&)>("loadUserData");
         gameUpdateAndDraw = dll.get_function<void(const GameAssets&, GameState&)>("updateAndDraw");
     }
 
@@ -90,6 +94,7 @@ struct BaseState {
     }
 
     void loadState(GameState& gs, const std::string& name = "") {
+        gameSaveUserData(gs);
         auto [data, in] = zpp::bits::data_in();
         auto filename = name.length() ? name : "state";
         uintmax_t file_size = std::filesystem::file_size(filename);
@@ -98,6 +103,8 @@ struct BaseState {
         i.seekg(0, std::ios::beg);
         i.read(reinterpret_cast<char*>(data.data()), data.size());
         auto _ = in(gs, gcs);
+        gs.tmp = {};
+        gameLoadUserData(gs);
     }
 };
 
