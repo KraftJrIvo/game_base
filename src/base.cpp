@@ -44,7 +44,7 @@ struct BaseState {
     std::string dllName;
     std::function<void(GameAssets&, GameState&)> gameInit;
     std::function<void(GameState&, const GameState&)> gameSetState;
-    std::function<void(const GameAssets&, GameState&)> gameUpdateAndDraw;
+    std::function<void(GameState&)> gameUpdateAndDraw;
     std::filesystem::path gameDllPath;
     std::filesystem::path gameNewDllPath;
     dylib dll;
@@ -64,7 +64,7 @@ struct BaseState {
     void setFunc() {
         gameInit = dll.get_function<void(GameAssets&, GameState&)>("init");
         gameSetState = dll.get_function<void(GameState&, const GameState&)>("setState");
-        gameUpdateAndDraw = dll.get_function<void(const GameAssets&, GameState&)>("updateAndDraw");
+        gameUpdateAndDraw = dll.get_function<void(GameState&)>("updateAndDraw");
     }
 
     void reloadDll() {
@@ -220,7 +220,7 @@ int main()
         bs.checkLoadDLL();
         processInput(bs, ga, gs);
 
-        bs.gameUpdateAndDraw(ga, gs);
+        bs.gameUpdateAndDraw(gs);
     }
 
     CloseWindow();

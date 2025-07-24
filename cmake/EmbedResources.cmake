@@ -70,4 +70,6 @@ function(embed_resources RESOURCE_DIR OUT_VAR)
     # Optional: export header path so user can include it
     set(RESOURCES_HEADER "${RESOURCES_H}" PARENT_SCOPE)
 
+    set_source_files_properties(${GENERATED_C_FILES} PROPERTIES GENERATED TRUE)
+    
 endfunction()

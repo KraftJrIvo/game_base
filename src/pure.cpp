@@ -67,7 +67,7 @@ int main()
 
     while (!WindowShouldClose()) {
         processInput(bs, ga, gs);
-        updateAndDraw(ga, gs);
+        updateAndDraw(gs);
     }
 
     CloseWindow();

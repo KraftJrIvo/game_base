@@ -24,7 +24,7 @@ add_subdirectory(game)
 if(NOT TARGET embedfile)
   add_executable(embedfile "src/util/embedfile.c")
 endif()
-embed_resources("${GAME_BASE_SOURCE_DIR}/res" EMBEDDED_SOURCES EXCLUDE_EXTENSIONS ".rc" ".ico" ".txt")
+embed_resources("${GAME_BASE_SOURCE_DIR}/res" EMBEDDED_SOURCES BASE_GAME_RES EXCLUDE_EXTENSIONS ".rc" ".ico" ".txt")
 
 set(RESOURCE_FILES    
   ${EMBEDDED_SOURCES}
