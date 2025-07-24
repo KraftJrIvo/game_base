@@ -44,8 +44,7 @@ struct BaseState {
     Vector2 winSz, baseWinSz;
     std::string dllName;
     std::function<void(GameAssets&, GameState&)> gameInit;
-    std::function<void(const GameState&)> gameSaveUserData;
-    std::function<void(GameState&)> gameLoadUserData;
+    std::function<void(GameState&, const GameState&)> gameSetState;
     std::function<void(const GameAssets&, GameState&)> gameUpdateAndDraw;
     std::filesystem::path gameDllPath;
     std::filesystem::path gameNewDllPath;
@@ -65,8 +64,7 @@ struct BaseState {
 
     void setFunc() {
         gameInit = dll.get_function<void(GameAssets&, GameState&)>("init");
-        gameSaveUserData = dll.get_function<void(const GameState&)>("saveUserData");
-        gameLoadUserData = dll.get_function<void(GameState&)>("loadUserData");
+        gameSetState = dll.get_function<void(GameState&, const GameState&)>("setState");
         gameUpdateAndDraw = dll.get_function<void(const GameAssets&, GameState&)>("updateAndDraw");
     }
 
@@ -93,8 +91,7 @@ struct BaseState {
         o.close();
     }
 
-    void loadState(GameState& gs, const std::string& name = "") {
-        gameSaveUserData(gs);
+    void loadState(GameAssets& ga, GameState& gs, const std::string& name = "") {
         auto [data, in] = zpp::bits::data_in();
         auto filename = name.length() ? name : "state";
         uintmax_t file_size = std::filesystem::file_size(filename);
@@ -102,9 +99,9 @@ struct BaseState {
         data.resize(file_size);
         i.seekg(0, std::ios::beg);
         i.read(reinterpret_cast<char*>(data.data()), data.size());
-        auto _ = in(gs, gcs);
-        gs.tmp = {};
-        gameLoadUserData(gs);
+        GameState ngs;
+        auto _ = in(ngs, gcs);
+        gameSetState(gs, ngs);
     }
 };
 
@@ -164,7 +161,7 @@ void processInput(BaseState& bs, GameAssets& ga, GameState& gs)
             bs.gcs.recording = false;        
         } else if (bs.gcs.casen < bs.gcs.gameCases.size()) {
             bs.gcs.replaying = true;
-            gs = bs.gcs.gameCases.at(bs.gcs.casen).gs;
+            bs.gameSetState(gs, bs.gcs.gameCases.at(bs.gcs.casen).gs);
             bs.gcs.frame = 0;
             bs.gcs.aelframe = 0;
             ResetInputState();
@@ -179,7 +176,7 @@ void processInput(BaseState& bs, GameAssets& ga, GameState& gs)
         if (casen < bs.gcs.gameCases.size()) {
             bs.gcs.replaying = true;
             bs.gcs.casen = casen;
-            gs = bs.gcs.gameCases.at(casen).gs;
+            bs.gameSetState(gs, bs.gcs.gameCases.at(casen).gs);
             bs.gcs.frame = 0;
             bs.gcs.aelframe = 0;
             ResetInputState();
@@ -202,7 +199,7 @@ void processInput(BaseState& bs, GameAssets& ga, GameState& gs)
         if (IsKeyPressed(KEY_S)/* || IsKeyPressed(KEY_SPACE)*/)
             bs.saveState(gs);
         if (IsKeyPressed(KEY_L))
-            bs.loadState(gs);
+            bs.loadState(ga, gs);
         if (IsKeyPressed(KEY_R))
             bs.gameInit(ga, gs);
     }
