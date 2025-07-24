@@ -17,8 +17,7 @@
 #define NOUSER
 #include <dylib.hpp>
 
-extern "C" const unsigned char res_icon[];
-extern "C" const size_t        res_icon_len;
+#include "resources.h"
 
 const std::string DLL_PATH = "..\\game\\build\\";
 const std::string DLL_NAME = "GAME";
@@ -110,7 +109,7 @@ void initWindow() {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WIN_NOM.c_str());
-    SetWindowIcon(LoadImageFromMemory(".png", res_icon, res_icon_len));
+    SetWindowIcon(LoadImageFromMemory(".png", res_icon_png, res_icon_png_len));
     SetTargetFPS(TARGET_FPS);    
     SetExitKey(KEY_F4);
 }

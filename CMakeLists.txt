@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
+include(cmake/EmbedResources.cmake)
+
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -19,10 +21,13 @@ project(GAME_BASE VERSION 0.0.1 DESCRIPTION "raylib game base" LANGUAGES CXX C)
 
 add_subdirectory(game)
 
-add_custom_command(OUTPUT res_icon.c COMMAND embedfile res_icon ${GAME_BASE_SOURCE_DIR}/res/icon.png DEPENDS ${GAME_BASE_SOURCE_DIR}/res/icon.png)
+if(NOT TARGET embedfile)
+  add_executable(embedfile "src/util/embedfile.c")
+endif()
+embed_resources("${GAME_BASE_SOURCE_DIR}/res" EMBEDDED_SOURCES EXCLUDE_EXTENSIONS ".rc" ".ico" ".txt")
 
 set(RESOURCE_FILES    
-  res_icon.c
+  ${EMBEDDED_SOURCES}
   "res/icon.rc"
 )
 
@@ -34,16 +39,15 @@ if (GAME_BASE_SHARED_BUILD)
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/game/build"
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/game/build"
   )
-  set(GAME_BASE_SOURCE_FILES    
-    "src/base.cpp"
-  )
-  add_executable(GAME_BASE ${GAME_BASE_SOURCE_FILES} ${RESOURCE_FILES})
+  add_executable(GAME_BASE "src/base.cpp" ${RESOURCE_FILES})
+  target_include_directories(GAME_BASE PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
   target_compile_definitions(GAME_BASE PRIVATE GAME_BASE_DLL)
 else()
   set(GAME_PURE_SOURCE_FILES    
     "src/pure.cpp"
   )
   add_executable(GAME_PURE ${GAME_PURE_SOURCE_FILES} ${RESOURCE_FILES})
+  target_include_directories(GAME_PURE PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 # DEPENDENCIES
