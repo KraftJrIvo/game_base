@@ -43,7 +43,7 @@ function(embed_resources RESOURCE_DIR OUT_VAR)
 
         # Add to extern declarations
         string(APPEND RESOURCE_DECLS "extern const unsigned char ${SYMBOL_NAME}[];\n")
-        string(APPEND RESOURCE_DECLS "extern const size_t ${SYMBOL_NAME}_len;\n\n")
+        string(APPEND RESOURCE_DECLS "extern const unsigned long long ${SYMBOL_NAME}_len;\n\n")
     endforeach()
 
     # Write the resources.c file containing extern declarations
