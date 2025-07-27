@@ -22,7 +22,6 @@
 const std::string DLL_PATH = "..\\game\\build\\";
 const std::string DLL_NAME = "GAME";
 const std::string NEW_DLL_POSTFIX = "_NEW";
-const std::string WIN_NOM = "HEX GAME";
 const int TARGET_FPS = 60;
 
 struct GameCase {
@@ -108,7 +107,7 @@ void initWindow() {
     SetTraceLogLevel(LOG_ERROR);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WIN_NOM.c_str());
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WIN_NOM);
     SetWindowIcon(LoadImageFromMemory(".png", res_icon_png, res_icon_png_len));
     SetTargetFPS(TARGET_FPS);    
     SetExitKey(KEY_F4);
