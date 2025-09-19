@@ -7,9 +7,6 @@
 
 #include "../game/src/game.h"
 
-extern "C" const unsigned char res_icon_png[];
-extern "C" const size_t        res_icon_png_len;
-
 const std::string DLL_NAME = "GAME";
 const std::string NEW_DLL_POSTFIX = "_NEW";
 const int TARGET_FPS = 60;
@@ -23,7 +20,7 @@ void initWindow() {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WIN_NOM);
-    SetWindowIcon(LoadImageFromMemory(".png", res_icon_png, res_icon_png_len));
+    SetWindowIcon(LoadImage("../game/res/icon.png"));
     SetTargetFPS(TARGET_FPS);    
     SetExitKey(KEY_F4);
 }
