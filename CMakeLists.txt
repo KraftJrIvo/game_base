@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 include(cmake/EmbedResources.cmake)
+include(cmake/CopyContentsToBinary.cmake)
 
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -99,6 +100,8 @@ if (GAME_BASE_SHARED_BUILD)
         ${CMAKE_CURRENT_BINARY_DIR}/_deps/raylib-build/raylib/raylib.dll
         ${CMAKE_CURRENT_BINARY_DIR}/raylib.dll
   )
+  copy_contents_to_binary(GAME_BASE "${GAME_BASE_SOURCE_DIR}/game/res_dyn")
 else()
   target_link_libraries(GAME_PURE PUBLIC GAME raylib)
+  copy_contents_to_binary(GAME_PURE "${GAME_BASE_SOURCE_DIR}/game/res_dyn")
 endif()
