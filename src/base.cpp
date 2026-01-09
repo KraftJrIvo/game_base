@@ -109,6 +109,7 @@ void initWindow() {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(1, 1, WIN_NOM);
     SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+    SetWindowPosition(GetMonitorWidth(GetCurrentMonitor()) * 0.5f - WINDOW_WIDTH * 0.5f, GetMonitorHeight(GetCurrentMonitor()) * 0.5f - WINDOW_HEIGHT * 0.5f);
     SetWindowIcon(LoadImage("../game/res/icon.png"));
     SetTargetFPS(TARGET_FPS);    
     SetExitKey(KEY_F4);
