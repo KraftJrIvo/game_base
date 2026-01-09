@@ -107,7 +107,8 @@ void initWindow() {
     SetTraceLogLevel(LOG_ERROR);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WIN_NOM);
+    InitWindow(1, 1, WIN_NOM);
+    SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
     SetWindowIcon(LoadImage("../game/res/icon.png"));
     SetTargetFPS(TARGET_FPS);    
     SetExitKey(KEY_F4);
