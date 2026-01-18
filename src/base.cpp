@@ -42,6 +42,7 @@ struct BaseState {
     Vector2 winSz, baseWinSz;
     std::string dllName;
     std::function<void(GameAssets&, GameState&)> gameInit;
+    std::function<void(GameState&)> gameReset;
     std::function<void(GameState&, const GameState&)> gameSetState;
     std::function<void(GameState&)> gameUpdateAndDraw;
     std::filesystem::path gameDllPath;
@@ -62,6 +63,7 @@ struct BaseState {
 
     void setFunc() {
         gameInit = dll.get_function<void(GameAssets&, GameState&)>("init");
+        gameReset = dll.get_function<void(GameState&)>("reset");
         gameSetState = dll.get_function<void(GameState&, const GameState&)>("setState");
         gameUpdateAndDraw = dll.get_function<void(GameState&)>("updateAndDraw");
     }

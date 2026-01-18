@@ -64,6 +64,8 @@ int main()
     while (!WindowShouldClose()) {
         processInput(bs, ga, gs);
         updateAndDraw(gs);
+        if (IsKeyPressed(KEY_R))
+            reset(gs);
     }
 
     CloseWindow();
