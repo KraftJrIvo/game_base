@@ -19,10 +19,21 @@
 
 #include "resources.h"
 
-const std::string DLL_PATH = "..\\game\\build\\";
-const std::string DLL_NAME = "GAME";
-const std::string NEW_DLL_POSTFIX = "_NEW";
+#if defined(_WIN32)
+const std::string LIB_PATH = "..\\game\\build\\";
+const std::string LIB_NAME = "GAME";
+#elif defined(__linux__)
+const std::string LIB_PATH = "../game/build/";
+const std::string LIB_NAME = "libGAME";
+#endif
+const std::string NEW_LIB_POSTFIX = "_NEW";
 const int TARGET_FPS = 60;
+
+#if defined(_WIN32)
+    #define SHARED_LIB_EXT ".dll"
+#elif defined(__linux__)
+    #define SHARED_LIB_EXT ".so"
+#endif
 
 struct GameCase {
     GameState gs = GameState();
@@ -40,46 +51,46 @@ struct GameCasesState {
 
 struct BaseState {
     Vector2 winSz, baseWinSz;
-    std::string dllName;
+    std::string libName;
     std::function<void(GameAssets&, GameState&)> gameInit;
     std::function<void(GameState&)> gameReset;
     std::function<void(GameState&, const GameState&)> gameSetState;
     std::function<void(GameState&)> gameUpdateAndDraw;
-    std::filesystem::path gameDllPath;
-    std::filesystem::path gameNewDllPath;
-    dylib dll;
+    std::filesystem::path gameLibPath;
+    std::filesystem::path gameNewLibPath;
+    dylib lib;
 
     GameCasesState gcs;
     AutomationEventList ael;
 
-    BaseState(const std::string& dllName) :
-        dllName(dllName),
-        gameDllPath(std::filesystem::current_path() / (dllName + ".dll")),
-        gameNewDllPath(std::filesystem::current_path() / (dllName + NEW_DLL_POSTFIX + ".dll")),
-        dll(std::filesystem::exists(gameDllPath) ? gameDllPath : gameNewDllPath)
+    BaseState(const std::string& libName) :
+        libName(libName),
+        gameLibPath(std::filesystem::current_path() / (libName + SHARED_LIB_EXT)),
+        gameNewLibPath(std::filesystem::current_path() / (libName + NEW_LIB_POSTFIX + SHARED_LIB_EXT)),
+        lib(std::filesystem::exists(gameLibPath) ? gameLibPath : gameNewLibPath)
     {
         setFunc();
     }
 
     void setFunc() {
-        gameInit = dll.get_function<void(GameAssets&, GameState&)>("init");
-        gameReset = dll.get_function<void(GameState&)>("reset");
-        gameSetState = dll.get_function<void(GameState&, const GameState&)>("setState");
-        gameUpdateAndDraw = dll.get_function<void(GameState&)>("updateAndDraw");
+        gameInit = lib.get_function<void(GameAssets&, GameState&)>("init");
+        gameReset = lib.get_function<void(GameState&)>("reset");
+        gameSetState = lib.get_function<void(GameState&, const GameState&)>("setState");
+        gameUpdateAndDraw = lib.get_function<void(GameState&)>("updateAndDraw");
     }
 
-    void reloadDll() {
-        dll = dylib(dllName);
+    void reloadLib() {
+        lib = dylib(libName);
         setFunc();
     }
 
-    void checkLoadDLL() {
-        if (std::filesystem::exists(gameNewDllPath)) {
-            dll = dylib(gameNewDllPath);
-            std::filesystem::remove(gameDllPath);
-            std::filesystem::copy_file(gameNewDllPath, gameDllPath);
-            reloadDll();
-            std::filesystem::remove(gameNewDllPath);
+    void checkLoadLib() {
+        if (std::filesystem::exists(gameNewLibPath)) {
+            lib = dylib(gameNewLibPath);
+            std::filesystem::remove(gameLibPath);
+            std::filesystem::copy_file(gameNewLibPath, gameLibPath);
+            reloadLib();
+            std::filesystem::remove(gameNewLibPath);
         }
     }
 
@@ -212,15 +223,16 @@ int main()
 {
     initWindow();
 
-    BaseState bs(DLL_PATH + DLL_NAME);
+    std::cout << "AAA:" << (LIB_PATH + LIB_NAME) << std::endl;
+    BaseState bs(LIB_PATH + LIB_NAME);
     GameAssets ga;
     GameState gs;
 
-    bs.checkLoadDLL();
+    bs.checkLoadLib();
     bs.gameInit(ga, gs);
 
     while (!WindowShouldClose()) {
-        bs.checkLoadDLL();
+        bs.checkLoadLib();
         processInput(bs, ga, gs);
 
         bs.gameUpdateAndDraw(gs);

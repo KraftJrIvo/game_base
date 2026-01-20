@@ -7,8 +7,6 @@
 
 #include "../game/src/game.h"
 
-const std::string DLL_NAME = "GAME";
-const std::string NEW_DLL_POSTFIX = "_NEW";
 const int TARGET_FPS = 60;
 
 struct BaseState {

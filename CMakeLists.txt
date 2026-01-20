@@ -41,7 +41,7 @@ if (GAME_BASE_SHARED_BUILD)
   )
   add_executable(GAME_BASE "src/base.cpp" ${RESOURCE_FILES})
   target_include_directories(GAME_BASE PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-  target_compile_definitions(GAME_BASE PRIVATE GAME_BASE_DLL)
+  target_compile_definitions(GAME_BASE PRIVATE GAME_BASE_SHARED)
 else()
   set(GAME_PURE_SOURCE_FILES    
     "src/pure.cpp"
@@ -94,12 +94,19 @@ if (GAME_BASE_SHARED_BUILD)
     FetchContent_MakeAvailable(dylib)
   endif()
   target_link_libraries(GAME_BASE PUBLIC GAME_NEW raylib dylib)
-  add_custom_command(TARGET GAME_BASE
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/_deps/raylib-build/raylib/raylib.dll
-        ${CMAKE_CURRENT_BINARY_DIR}/raylib.dll
-  )
+  if(UNIX)
+    add_custom_command(TARGET GAME_BASE
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy
+          ${CMAKE_CURRENT_BINARY_DIR}/_deps/raylib-build/raylib/libraylib.so
+          ${CMAKE_CURRENT_BINARY_DIR}/libraylib.so)
+  elseif(WIN32)
+    add_custom_command(TARGET GAME_BASE
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy
+          ${CMAKE_CURRENT_BINARY_DIR}/_deps/raylib-build/raylib/raylib.dll
+          ${CMAKE_CURRENT_BINARY_DIR}/raylib.dll)
+  endif()
   copy_contents_to_binary(GAME_BASE "${GAME_BASE_SOURCE_DIR}/game/res_dyn")
 else()
   target_link_libraries(GAME_PURE PUBLIC GAME raylib)
