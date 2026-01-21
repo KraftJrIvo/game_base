@@ -19,21 +19,18 @@
 
 #include "resources.h"
 
+const std::string LIB_NAME = "GAME";
 #if defined(_WIN32)
 const std::string LIB_PATH = "..\\game\\build\\";
-const std::string LIB_NAME = "GAME";
+const std::string LIB_PREFIX = "";
+const std::string LIB_EXT = ".dll";
 #elif defined(__linux__)
 const std::string LIB_PATH = "../game/build/";
-const std::string LIB_NAME = "libGAME";
+const std::string LIB_PREFIX = "lib";
+const std::string LIB_EXT = ".so";
 #endif
 const std::string NEW_LIB_POSTFIX = "_NEW";
 const int TARGET_FPS = 60;
-
-#if defined(_WIN32)
-    #define SHARED_LIB_EXT ".dll"
-#elif defined(__linux__)
-    #define SHARED_LIB_EXT ".so"
-#endif
 
 struct GameCase {
     GameState gs = GameState();
@@ -51,23 +48,26 @@ struct GameCasesState {
 
 struct BaseState {
     Vector2 winSz, baseWinSz;
-    std::string libName;
+    std::string libPath, libName;
     std::function<void(GameAssets&, GameState&)> gameInit;
     std::function<void(GameState&)> gameReset;
     std::function<void(GameState&, const GameState&)> gameSetState;
     std::function<void(GameState&)> gameUpdateAndDraw;
-    std::filesystem::path gameLibPath;
-    std::filesystem::path gameNewLibPath;
+    std::filesystem::path gameLibPath, gameLibName, gameNewLibName, gameLibNameFull, gameNewLibNameFull;
     dylib lib;
 
     GameCasesState gcs;
     AutomationEventList ael;
 
-    BaseState(const std::string& libName) :
+    BaseState(const std::string& libPath, const std::string& libName) :
+        libPath(libPath),
         libName(libName),
-        gameLibPath(std::filesystem::current_path() / (libName + SHARED_LIB_EXT)),
-        gameNewLibPath(std::filesystem::current_path() / (libName + NEW_LIB_POSTFIX + SHARED_LIB_EXT)),
-        lib(std::filesystem::exists(gameLibPath) ? gameLibPath : gameNewLibPath)
+        gameLibPath(std::filesystem::current_path() / libPath),
+        gameLibName(libName),
+        gameLibNameFull(LIB_PREFIX + libName + LIB_EXT),
+        gameNewLibName(libName + NEW_LIB_POSTFIX),
+        gameNewLibNameFull(LIB_PREFIX + libName + NEW_LIB_POSTFIX + LIB_EXT),
+        lib(gameLibPath, std::filesystem::exists(gameLibPath / gameLibNameFull) ? gameLibName : gameNewLibName)
     {
         setFunc();
     }
@@ -80,17 +80,17 @@ struct BaseState {
     }
 
     void reloadLib() {
-        lib = dylib(libName);
+        lib = dylib(libPath, libName);
         setFunc();
     }
 
     void checkLoadLib() {
-        if (std::filesystem::exists(gameNewLibPath)) {
-            lib = dylib(gameNewLibPath);
-            std::filesystem::remove(gameLibPath);
-            std::filesystem::copy_file(gameNewLibPath, gameLibPath);
+        if (std::filesystem::exists(gameLibPath / gameNewLibNameFull)) {
+            lib = dylib(gameLibPath / gameNewLibNameFull);
+            std::filesystem::remove(gameLibPath / gameLibNameFull);
+            std::filesystem::copy_file(gameLibPath / gameNewLibNameFull, gameLibPath / gameLibNameFull);
             reloadLib();
-            std::filesystem::remove(gameNewLibPath);
+            std::filesystem::remove(gameLibPath / gameNewLibNameFull);
         }
     }
 
@@ -223,8 +223,7 @@ int main()
 {
     initWindow();
 
-    std::cout << "AAA:" << (LIB_PATH + LIB_NAME) << std::endl;
-    BaseState bs(LIB_PATH + LIB_NAME);
+    BaseState bs(LIB_PATH, LIB_NAME);
     GameAssets ga;
     GameState gs;
 

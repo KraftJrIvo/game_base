@@ -1,7 +1,7 @@
 function(embed_resources RESOURCE_DIR OUT_VAR)
     cmake_parse_arguments(ARG "" "" "EXCLUDE_EXTENSIONS" ${ARGN})
 
-    file(GLOB_RECURSE RESOURCE_FILES RELATIVE "${RESOURCE_DIR}" "${RESOURCE_DIR}/*")
+    file(GLOB_RECURSE RESOURCE_FILES CONFIGURE_DEPENDS RELATIVE "${RESOURCE_DIR}" "${RESOURCE_DIR}/*")
 
     set(GENERATED_C_FILES)
     set(RESOURCE_DECLS)
@@ -138,7 +138,8 @@ function(embed_resources RESOURCE_DIR OUT_VAR)
 
     # Write the resources.c file containing extern declarations
     set(RESOURCES_C "${CMAKE_CURRENT_BINARY_DIR}/resources.c")
-    file(WRITE "${RESOURCES_C}" "// Auto-generated resource declarations\n\n${RESOURCE_DECLS}")
+    set(RESOURCES_C_CONTENT "// Auto-generated resource declarations\n\n${RESOURCE_DECLS}")
+    file(WRITE "${RESOURCES_C}" "${RESOURCES_C_CONTENT}")
     list(APPEND GENERATED_C_FILES "${RESOURCES_C}")
 
     # Return full list of .c files
@@ -148,10 +149,11 @@ function(embed_resources RESOURCE_DIR OUT_VAR)
     set(RESOURCES_C "${CMAKE_CURRENT_BINARY_DIR}/resources.c")
     set(RESOURCES_H "${CMAKE_CURRENT_BINARY_DIR}/resources.h")
 
-    file(WRITE "${RESOURCES_H}" "// Auto-generated resource header\n\n")
-    file(APPEND "${RESOURCES_H}" "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
-    file(APPEND "${RESOURCES_H}" "${RESOURCE_DECLS}")
-    file(APPEND "${RESOURCES_H}" "#ifdef __cplusplus\n}\n#endif\n")
+    set(RESOURCES_H_CONTENT "// Auto-generated resource header\n\n")
+    string(APPEND RESOURCES_H_CONTENT "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
+    string(APPEND RESOURCES_H_CONTENT "${RESOURCE_DECLS}")
+    string(APPEND RESOURCES_H_CONTENT "#ifdef __cplusplus\n}\n#endif\n")
+    file(WRITE "${RESOURCES_H}" "${RESOURCES_H_CONTENT}")
 
     list(APPEND GENERATED_C_FILES "${RESOURCES_C}")
     # Also expose RESOURCES_H so it can be included in target's include path
@@ -189,29 +191,29 @@ function(embed_resources RESOURCE_DIR OUT_VAR)
     set(RESOURCE_TREE_H "${CMAKE_CURRENT_BINARY_DIR}/resource_tree.h")
     set(RESOURCE_TREE_C "${CMAKE_CURRENT_BINARY_DIR}/resource_tree.c")
 
-    file(WRITE "${RESOURCE_TREE_H}" "// Auto-generated resource tree\n\n")
-    file(APPEND "${RESOURCE_TREE_H}" "#ifndef RESOURCE_TREE_H\n#define RESOURCE_TREE_H\n\n")
-    file(APPEND "${RESOURCE_TREE_H}" "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
-    file(APPEND "${RESOURCE_TREE_H}" "typedef struct ResourceNode {\n")
-    file(APPEND "${RESOURCE_TREE_H}" "  const char* name;\n")
-    file(APPEND "${RESOURCE_TREE_H}" "  const char* path;\n")
-    file(APPEND "${RESOURCE_TREE_H}" "  const unsigned char* data;\n")
-    file(APPEND "${RESOURCE_TREE_H}" "  const unsigned long long* len;\n")
-    file(APPEND "${RESOURCE_TREE_H}" "  int parent;\n")
-    file(APPEND "${RESOURCE_TREE_H}" "  int first_child;\n")
-    file(APPEND "${RESOURCE_TREE_H}" "  int next_sibling;\n")
-    file(APPEND "${RESOURCE_TREE_H}" "  int is_dir;\n")
-    file(APPEND "${RESOURCE_TREE_H}" "} ResourceNode;\n\n")
-    file(APPEND "${RESOURCE_TREE_H}" "extern const ResourceNode g_resource_nodes[];\n")
-    file(APPEND "${RESOURCE_TREE_H}" "extern const unsigned int g_resource_nodes_count;\n")
-    file(APPEND "${RESOURCE_TREE_H}" "extern const int g_resource_root_index;\n\n")
-    file(APPEND "${RESOURCE_TREE_H}" "#ifdef __cplusplus\n}\n#endif\n\n#endif\n")
+    set(RESOURCE_TREE_H_CONTENT "// Auto-generated resource tree\n\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "#ifndef RESOURCE_TREE_H\n#define RESOURCE_TREE_H\n\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "typedef struct ResourceNode {\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "  const char* name;\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "  const char* path;\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "  const unsigned char* data;\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "  const unsigned long long* len;\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "  int parent;\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "  int first_child;\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "  int next_sibling;\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "  int is_dir;\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "} ResourceNode;\n\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "extern const ResourceNode g_resource_nodes[];\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "extern const unsigned int g_resource_nodes_count;\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "extern const int g_resource_root_index;\n\n")
+    string(APPEND RESOURCE_TREE_H_CONTENT "#ifdef __cplusplus\n}\n#endif\n\n#endif\n")
 
-    file(WRITE "${RESOURCE_TREE_C}" "// Auto-generated resource tree\n\n")
-    file(APPEND "${RESOURCE_TREE_C}" "#include <stddef.h>\n")
-    file(APPEND "${RESOURCE_TREE_C}" "#include \"resource_tree.h\"\n")
-    file(APPEND "${RESOURCE_TREE_C}" "#include \"resources.h\"\n\n")
-    file(APPEND "${RESOURCE_TREE_C}" "const ResourceNode g_resource_nodes[] = {\n")
+    set(RESOURCE_TREE_C_CONTENT "// Auto-generated resource tree\n\n")
+    string(APPEND RESOURCE_TREE_C_CONTENT "#include <stddef.h>\n")
+    string(APPEND RESOURCE_TREE_C_CONTENT "#include \"resource_tree.h\"\n")
+    string(APPEND RESOURCE_TREE_C_CONTENT "#include \"resources.h\"\n\n")
+    string(APPEND RESOURCE_TREE_C_CONTENT "const ResourceNode g_resource_nodes[] = {\n")
 
     foreach(i RANGE 0 ${LAST_INDEX})
         list(GET NODE_NAMES ${i} NODE_NAME)
@@ -236,15 +238,37 @@ function(embed_resources RESOURCE_DIR OUT_VAR)
             set(LEN_EXPR "&${NODE_LEN}")
         endif()
 
-        file(APPEND "${RESOURCE_TREE_C}"
+        string(APPEND RESOURCE_TREE_C_CONTENT
             "  {\"${NODE_NAME_ESC}\", \"${NODE_PATH_ESC}\", ${DATA_PTR}, ${LEN_EXPR}, ${NODE_PARENT}, ${NODE_FIRST}, ${NODE_NEXT}, ${NODE_ISDIR}},\n")
     endforeach()
 
-    file(APPEND "${RESOURCE_TREE_C}" "};\n")
-    file(APPEND "${RESOURCE_TREE_C}" "const unsigned int g_resource_nodes_count = ${NODE_COUNT};\n")
-    file(APPEND "${RESOURCE_TREE_C}" "const int g_resource_root_index = ${ROOT_INDEX};\n")
+    string(APPEND RESOURCE_TREE_C_CONTENT "};\n")
+    string(APPEND RESOURCE_TREE_C_CONTENT "const unsigned int g_resource_nodes_count = ${NODE_COUNT};\n")
+    string(APPEND RESOURCE_TREE_C_CONTENT "const int g_resource_root_index = ${ROOT_INDEX};\n")
+
+    file(WRITE "${RESOURCE_TREE_H}" "${RESOURCE_TREE_H_CONTENT}")
+    file(WRITE "${RESOURCE_TREE_C}" "${RESOURCE_TREE_C_CONTENT}")
 
     list(APPEND GENERATED_C_FILES "${RESOURCE_TREE_C}")
+
+    set(GENERATE_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/generate_resources.cmake")
+    file(WRITE "${GENERATE_SCRIPT}" "file(WRITE \"${RESOURCES_C}\" [=[\n${RESOURCES_C_CONTENT}\n]=])\n")
+    file(APPEND "${GENERATE_SCRIPT}" "file(WRITE \"${RESOURCES_H}\" [=[\n${RESOURCES_H_CONTENT}\n]=])\n")
+    file(APPEND "${GENERATE_SCRIPT}" "file(WRITE \"${RESOURCE_TREE_H}\" [=[\n${RESOURCE_TREE_H_CONTENT}\n]=])\n")
+    file(APPEND "${GENERATE_SCRIPT}" "file(WRITE \"${RESOURCE_TREE_C}\" [=[\n${RESOURCE_TREE_C_CONTENT}\n]=])\n")
+
+    set(GENERATE_DEPENDS)
+    foreach(RESOURCE_FILE ${RESOURCE_FILES})
+        list(APPEND GENERATE_DEPENDS "${RESOURCE_DIR}/${RESOURCE_FILE}")
+    endforeach()
+
+    add_custom_command(
+        OUTPUT "${RESOURCES_C}" "${RESOURCES_H}" "${RESOURCE_TREE_C}" "${RESOURCE_TREE_H}"
+        COMMAND ${CMAKE_COMMAND} -P "${GENERATE_SCRIPT}"
+        DEPENDS ${GENERATE_DEPENDS} "${GENERATE_SCRIPT}"
+        COMMENT "Generating embedded resource headers"
+        VERBATIM
+    )
 
     # Update caller-visible list after adding tree source.
     set(${OUT_VAR} "${GENERATED_C_FILES}" PARENT_SCOPE)

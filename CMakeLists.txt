@@ -19,6 +19,23 @@ add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
 project(GAME_BASE VERSION 0.0.1 DESCRIPTION "raylib game base" LANGUAGES CXX C)
 
+function(configure_game_new_temp_publish target_name)
+  set(_game_new_temp_name "GAME_NEW.tmp")
+  set_target_properties(${target_name} PROPERTIES
+    RUNTIME_OUTPUT_NAME "${_game_new_temp_name}"
+    LIBRARY_OUTPUT_NAME "${_game_new_temp_name}"
+    ARCHIVE_OUTPUT_NAME "GAME_NEW"
+  )
+  set(_game_new_final_name "$<TARGET_FILE_PREFIX:${target_name}>GAME_NEW$<TARGET_FILE_SUFFIX:${target_name}>")
+  set(_game_new_publish_tmp "$<TARGET_FILE_DIR:${target_name}>/${_game_new_final_name}.tmp")
+  add_custom_command(TARGET ${target_name}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${target_name}>" "${_game_new_publish_tmp}"
+    COMMAND ${CMAKE_COMMAND} -E rename "${_game_new_publish_tmp}" "$<TARGET_FILE_DIR:${target_name}>/${_game_new_final_name}"
+    COMMENT "Publish ${target_name} via temp file then rename"
+  )
+endfunction()
+
 add_subdirectory(game)
 
 if(NOT TARGET embedfile)
