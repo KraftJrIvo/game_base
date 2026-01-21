@@ -53,7 +53,7 @@ struct BaseState {
     std::function<void(GameState&)> gameReset;
     std::function<void(GameState&, const GameState&)> gameSetState;
     std::function<void(GameState&)> gameUpdateAndDraw;
-    std::filesystem::path gameLibPath, gameLibName, gameNewLibName, gameLibNameFull, gameNewLibNameFull;
+    std::filesystem::path gameLibDir, gameLibName, gameNewLibName, gameLibFile, gameNewLibFile, gameLibFullPath, gameNewLibFullPath;
     dylib lib;
 
     GameCasesState gcs;
@@ -62,12 +62,14 @@ struct BaseState {
     BaseState(const std::string& libPath, const std::string& libName) :
         libPath(libPath),
         libName(libName),
-        gameLibPath(std::filesystem::current_path() / libPath),
+        gameLibDir(std::filesystem::current_path() / libPath),
         gameLibName(libName),
-        gameLibNameFull(LIB_PREFIX + libName + LIB_EXT),
+        gameLibFile(LIB_PREFIX + libName + LIB_EXT),
         gameNewLibName(libName + NEW_LIB_POSTFIX),
-        gameNewLibNameFull(LIB_PREFIX + libName + NEW_LIB_POSTFIX + LIB_EXT),
-        lib(gameLibPath, std::filesystem::exists(gameLibPath / gameLibNameFull) ? gameLibName : gameNewLibName)
+        gameNewLibFile(LIB_PREFIX + libName + NEW_LIB_POSTFIX + LIB_EXT),
+        gameLibFullPath(gameLibDir / gameLibFile),
+        gameNewLibFullPath(gameLibDir / gameNewLibFile),
+        lib(gameLibDir.string(), (std::filesystem::exists(gameLibFullPath) ? gameLibName : gameNewLibName).string())
     {
         setFunc();
     }
@@ -85,12 +87,12 @@ struct BaseState {
     }
 
     void checkLoadLib() {
-        if (std::filesystem::exists(gameLibPath / gameNewLibNameFull)) {
-            lib = dylib(gameLibPath / gameNewLibNameFull);
-            std::filesystem::remove(gameLibPath / gameLibNameFull);
-            std::filesystem::copy_file(gameLibPath / gameNewLibNameFull, gameLibPath / gameLibNameFull);
+        if (std::filesystem::exists(gameNewLibFullPath)) {
+            lib = dylib(gameNewLibFullPath);
+            std::filesystem::remove(gameLibFullPath);
+            std::filesystem::copy_file(gameNewLibFullPath, gameLibFullPath);
             reloadLib();
-            std::filesystem::remove(gameLibPath / gameNewLibNameFull);
+            std::filesystem::remove(gameNewLibFullPath);
         }
     }
 
