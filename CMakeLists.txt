@@ -72,7 +72,7 @@ else()
 endif()
 
 # DEPENDENCIES
-set(RAYLIB_VERSION 5.5.4)
+set(RAYLIB_VERSION 6.0.1)
 if (GAME_BASE_SHARED_BUILD)
   set(BUILD_SHARED_LIBS ON CACHE BOOL "Build raylib as shared library" FORCE)
 endif()
@@ -84,7 +84,7 @@ if (NOT raylib_FOUND) # If there's none, fetch and build raylib
     raylib
     DOWNLOAD_EXTRACT_TIMESTAMP OFF
     URL https://github.com/KraftJrIvo/raylib/archive/refs/tags/${RAYLIB_VERSION}.tar.gz
-    URL_HASH SHA512=0f24c24108a75b5f4e82de38e814f17220823bd1e578369eee4122f323e491dc4a607d192c21935170035a22b23d0f4a5f197486758be434c6f80759f1356b80
+    URL_HASH SHA512=8e2b7de257c0af44d34c1a908c874affd9b13b51bd3651a06c79a66eba8bc7e663646c3d7ffe32af7dddacf8331205cecd6256bcdfe23c396124e14ebcb0e4fb
   )
   FetchContent_GetProperties(raylib)
   if (NOT raylib_POPULATED)
